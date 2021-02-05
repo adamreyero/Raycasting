@@ -211,7 +211,7 @@ let resolution = W;
 var renderDistance = 9999;
 
 let walls = [];
-let scale2D = 4;
+let scale2D = 10;
 let wallSize = 1;
 let map = [
 [1,1,1,1,1,1,1,1,1],
@@ -281,7 +281,7 @@ function drawWalls()
 		if(hit != null)
 		{
 			ctx.fillStyle = color;
-			ctx.fillRect(a*(W/resolution),(600/2)-(600/dist)/2,(W/resolution),15/dist);
+			ctx.fillRect(a*(W/resolution),(600/2)-(600/dist)/2,(W/resolution),600/dist);
 		}
 	}	
 }
