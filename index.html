@@ -2,7 +2,7 @@
 <head>
 	<style>
 	*{padding: 0; margin:0;}
-	canvas{ background: #85CBC6; display: block; margin: 0 auto;}
+	canvas{ background: #6b5c3d; display: block; margin: 0 auto;}
 	</style>
 </head>
 <body>
@@ -196,36 +196,117 @@ function lineLine(x1,y1,x2,y2, x3,y3,x4,y4)
 	return false;
 }
 
+function linePoint(x1,y1,x2,y2, px,py) {
+
+  let d1 = distance(px,py, x1,y1);
+  let d2 = distance(px,py, x2,y2);
+  let lineLen = distance(x1,y1, x2,y2);
+  let buffer = 0.1;
+  if (d1+d2 >= lineLen-buffer && d1+d2 <= lineLen+buffer) {
+    return true;
+  }
+  return false;
 }
 
-let playerX = 10;
-let playerY = 10;
-let playerRot = 0;
+function lineCirc(x1,y1,x2,y2,cx,cy,r) {
+
+  let len = distance(x1,y1,x2,y2);
+  let dot = ( ((cx-x1)*(x2-x1)) + ((cy-y1)*(y2-y1)) ) / Math.pow(len,2);
+  let closestX = x1 + (dot * (x2-x1));
+  let closestY = y1 + (dot * (y2-y1));
+  let inside1 = pointCirc(x1,y1,cx,cy,r);
+  let inside2 = pointCirc(x2,y2,cx,cy,r);
+  let dist = distance(closestX,closestY,cx,cy);
+  let onSegment = linePoint(x1,y1,x2,y2, closestX,closestY);
+  if (!onSegment)
+  {
+	return false;
+  }
+
+  if (dist <= r) {
+    return [closestX,closestY];
+  }
+  if (inside1)
+  {  
+	return [x1,y1];
+  }
+  else if(inside2)
+  {
+	return [x2,y2];
+  }
+  return false;
+}
+
+}
+
+let playerX = 12;
+let playerY = 4;
+let playerRot = 270;
 let playerXV = 0;
 let playerYV = 0;
-let playerW = .2;
+let playerRad = .3;
 let playerSpeed = .06;
 
 let FOV = 90;
 let resolution = W;
-var renderDistance = 9999;
+var renderDistance = 999;
+let yOffset = 0;
 
-let walls = [];
+let planes = [];
 let scale2D = 10;
 let wallSize = 1;
 let map = [
-[1,1,1,1,1,1,1,1,1],
-[0,0,1,0,0,0,0,0,1],
-[1,0,1,0,1,0,1,1,1],
-[1,0,0,0,1,0,0,0,1],
-[1,1,1,0,1,1,1,0,1],
-[1,0,0,0,0,0,1,0,1],
-[1,0,1,1,0,1,1,1,1],
-[1,0,0,1,0,0,0,0,0],
-[1,1,1,1,1,1,1,1,1]
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+[1,0,1,0,0,0,0,0,1,0,0,0,0,0,1],
+[1,0,1,0,1,0,1,1,1,0,0,0,0,0,1],
+[1,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+[1,1,1,0,1,1,1,0,1,0,0,0,0,0,1],
+[1,0,0,0,0,0,1,0,1,0,0,0,0,0,1],
+[1,0,1,1,0,1,1,1,1,0,0,0,0,0,1],
+[1,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-function Wall(x1,y1,x2,y2,color)
+<!-- let map = [ -->
+<!-- [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,1,0,1,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1,1,1,0,0,0,0,0,0,0,1], -->
+<!-- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1], -->
+<!-- [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] -->
+<!-- ]; -->
+
+function Point(x,y)
+{
+	this.x = x;
+	this.y = y;
+}
+
+function Plane(x1,y1,x2,y2,color)
 {
 	this.x1 = x1;
 	this.y1 = y1;
@@ -242,10 +323,22 @@ function convertMap()
 		{
 			if(map[a][b]==1)
 			{
-				walls.push(new Wall(wallSize*b,wallSize*a,wallSize*b+wallSize,wallSize*a,"#9C9C9C"));
-				walls.push(new Wall(wallSize*b,wallSize*a,wallSize*b,wallSize*a+wallSize,"#909090"));
-				walls.push(new Wall(wallSize*b+wallSize,wallSize*a,wallSize*b+wallSize,wallSize*a+wallSize,"#909090"));
-				walls.push(new Wall(wallSize*b,wallSize*a+wallSize,wallSize*b+wallSize,wallSize*a+wallSize,"#9C9C9C"));
+				if(a==0 || map[a-1][b]==0)
+				{
+					planes.push(new Plane(wallSize*b,wallSize*a,wallSize*b+wallSize,wallSize*a,"#9C9C9C"));
+				}
+				if(b==0 || map[a][b-1]==0)
+				{
+					planes.push(new Plane(wallSize*b,wallSize*a,wallSize*b,wallSize*a+wallSize,"#909090"));
+				}
+				if(b==map[a].length-1 || map[a][b+1]==0)
+				{
+					planes.push(new Plane(wallSize*b+wallSize,wallSize*a,wallSize*b+wallSize,wallSize*a+wallSize,"#909090"));
+				}
+				if(a==map.length-1 || map[a+1][b]==0)
+				{
+					planes.push(new Plane(wallSize*b,wallSize*a+wallSize,wallSize*b+wallSize,wallSize*a+wallSize,"#9C9C9C"));
+				}
 			}
 		}
 	}
@@ -253,95 +346,112 @@ function convertMap()
 
 convertMap();
 
-function drawWalls()
+function drawPlanes()
 {	
-	ctx.fillStyle = "#7DD67A";
-	ctx.fillRect(0,H/2,W,H,2);
+	ctx.fillStyle = "#757575";
+	ctx.fillRect(0,H/2,W,H/2,);
 	for(var a = 0; a<=resolution; a++)
 	{
 		var leftBound = FOV/2;
 		var x2 = playerX + Math.cos(Math.PI * (playerRot - leftBound + FOV/resolution*a) / 180) * renderDistance;
 		var y2 = playerY + Math.sin(Math.PI * (playerRot - leftBound + FOV/resolution*a) / 180) * renderDistance;
-		var dist = 9999;
-		var hit;
+		var dist=renderDistance+1;
 		var color;
-		for(var b = 0; b < walls.length;b++)
+		for(let i = 0; i< planes.length; i++)
 		{
-			if(lineLine(playerX,playerY,x2,y2,walls[b].x1,walls[b].y1,walls[b].x2,walls[b].y2) != false)
+			let thisHit=lineLine(playerX,playerY,x2,y2, planes[i].x1,planes[i].y1,planes[i].x2,planes[i].y2)
+			if(thisHit!=false)
 			{
-				var thisHit = lineLine(playerX,playerY,x2,y2,walls[b].x1,walls[b].y1,walls[b].x2,walls[b].y2);
-				if(distance(playerX,playerY,thisHit[0],thisHit[1]) < dist)
+				if(distance(thisHit[0],thisHit[1],playerX,playerY)<dist)
 				{
-					dist = distance(playerX,playerY,thisHit[0],thisHit[1]);
-					hit = thisHit;
-					color = walls[b].color;
-				}		
+					dist=distance(thisHit[0],thisHit[1],playerX,playerY);
+					color = planes[i].color;
+				}
 			}
 		}
-		if(hit != null)
+		if(dist<renderDistance)
 		{
 			ctx.fillStyle = color;
-			ctx.fillRect(a*(W/resolution),(600/2)-(600/dist)/2,(W/resolution),600/dist);
+			ctx.fillRect(W/resolution*a,(H/2)-((600/dist)/2),W/resolution,600/dist);
 		}
-	}	
-}
+	}
+}	
+
 
 function drawPlayer2D()
 {
+	ctx.fillStyle = "green";
+	ctx.fillRect(600,400,200,200);
+
 	ctx.fillStyle = "red";
 	ctx.beginPath();
-	ctx.arc(playerX*scale2D,playerY*scale2D,playerW*5*scale2D/2,0,2*Math.PI);
+	ctx.arc(700,500,playerRad*scale2D,0,2*Math.PI);
 	ctx.closePath();
 	ctx.fill();
 	
 	ctx.strokeStyle = "white";
+	ctx.lineWidth = 1;
 	ctx.beginPath();
-	ctx.moveTo(playerX*scale2D,playerY*scale2D);
-	ctx.lineTo(playerX*scale2D + Math.cos(Math.PI * playerRot / 180) * 2*scale2D,playerY*scale2D + Math.sin(Math.PI * playerRot / 180) *2*scale2D);
+	ctx.moveTo(700,500);
+	ctx.lineTo(700 + Math.cos(Math.PI * (playerRot) / 180) * (20),500 + Math.sin(Math.PI * (playerRot) / 180) * (20));
 	ctx.closePath();
 	ctx.stroke();
+	
+	<!-- for(var a = 0; a<=resolution; a++) -->
+	<!-- { -->
+		<!-- var leftBound = FOV/2; -->
+		<!-- var x2 = playerX + Math.cos(Math.PI * (playerRot - leftBound + FOV/resolution*a) / 180) * renderDistance; -->
+		<!-- var y2 = playerY + Math.sin(Math.PI * (playerRot - leftBound + FOV/resolution*a) / 180) * renderDistance; -->
+		<!-- var dist=renderDistance+1; -->
+		<!-- for(let i = 0; i< planes.length; i++) -->
+		<!-- { -->
+			<!-- let thisHit=lineLine(playerX,playerY,x2,y2, planes[i].x1,planes[i].y1,planes[i].x2,planes[i].y2) -->
+			<!-- if(thisHit!=false) -->
+			<!-- { -->
+				<!-- if(distance(thisHit[0],thisHit[1],playerX,playerY)<dist) -->
+				<!-- { -->
+					<!-- dist=distance(thisHit[0],thisHit[1],playerX,playerY); -->
+				<!-- } -->
+			<!-- } -->
+		<!-- } -->
+		<!-- ctx.strokeStyle = "white"; -->
+		<!-- ctx.lineWidth = 1; -->
+		<!-- ctx.beginPath(); -->
+		<!-- ctx.moveTo(700,500); -->
+		<!-- ctx.lineTo(700 + Math.cos(Math.PI * (playerRot - leftBound + FOV/resolution*a) / 180) * (dist*scale2D),500 + Math.sin(Math.PI * (playerRot - leftBound + FOV/resolution*a) / 180) * (dist*scale2D)); -->
+		<!-- ctx.closePath(); -->
+		<!-- ctx.stroke(); -->
+	<!-- } -->
 }
 
-function drawWalls2D()
+function drawPlanes2D()
 {
-	for(let a=0; a < map.length;a++)
+	for(let i = 0; i<planes.length;i++)
 	{
-		for(let b=0; b < map[a].length;b++)
+		if((planes[i].x1-playerX)*scale2D+700>600 && (planes[i].x1-playerX)*scale2D+700<800 && (planes[i].y1-playerY)*scale2D+500>400 && (planes[i].y1-playerY)*scale2D+500<600 &&
+		(planes[i].x2-playerX)*scale2D+700>600 && (planes[i].x2-playerX)*scale2D+700<800 && (planes[i].y2-playerY)*scale2D+500>400 && (planes[i].y2-playerY)*scale2D+500<600)
 		{
-			if(map[a][b] == 1)
-			{
-				ctx.strokeStyle = "white";
-				ctx.fillStyle = "white";
-				ctx.beginPath();
-				ctx.rect(b*wallSize*scale2D,a*wallSize*scale2D,wallSize*scale2D,wallSize*scale2D);
-				ctx.stroke();
-				
-				let side1 = [b*wallSize,a*wallSize-playerW,wallSize,playerW];
-				let side2 = [b*wallSize-playerW,a*wallSize,playerW,wallSize];
-				let side3 = [b*wallSize+wallSize,a*wallSize,playerW,wallSize];
-				let side4 = [b*wallSize,a*wallSize+wallSize,wallSize,playerW];
-				if(rectRect(playerX-(playerW/2),playerY-(playerW/2),playerW,playerW,side1[0],side1[1],side1[2],side1[3])==true)
-				{
-					playerY = side1[1]-(playerW/2);
-				}
-				if(rectRect(playerX-(playerW/2),playerY-(playerW/2),playerW,playerW,side2[0],side2[1],side2[2],side2[3])==true)
-				{
-					playerX = side2[0]-(playerW/2);
-				}
-				if(rectRect(playerX-(playerW/2),playerY-(playerW/2),playerW,playerW,side3[0],side3[1],side3[2],side3[3])==true)
-				{
-					playerX = side3[0]+playerW+(playerW/2);
-				}
-				if(rectRect(playerX-(playerW/2),playerY-(playerW/2),playerW,playerW,side4[0],side4[1],side4[2],side4[3])==true)
-				{
-					playerY = side4[1]+playerW+(playerW/2);
-				}
-			}
+			ctx.strokeStyle = "white";
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			ctx.moveTo((planes[i].x1-playerX)*scale2D+700,(planes[i].y1-playerY)*scale2D+500);
+			ctx.lineTo((planes[i].x2-playerX)*scale2D+700,(planes[i].y2-playerY)*scale2D+500);
+			ctx.closePath();
+			ctx.stroke();
+		}
+		
+		let closestPoint=lineCirc(planes[i].x1,planes[i].y1,planes[i].x2,planes[i].y2,playerX,playerY,playerRad);
+		if(closestPoint!=false)
+		{
+			let theta = (Math.atan2(playerY-closestPoint[1],playerX-closestPoint[0]))*(180/Math.PI);
+			playerY = closestPoint[1] + (playerRad)*Math.sin(theta * Math.PI / 180);
+			playerX = closestPoint[0] + (playerRad)*Math.cos(theta * Math.PI / 180);
 		}
 	}
 }
 
-let drag;
+let dragX;
+let dragY;
 function controls()
 {
 	playerXV = 0;
@@ -369,13 +479,17 @@ function controls()
 	if(mouseIsDown == 1)
 	{
 		mouseIsDown = 2;
-		drag = mouseX;
+		dragX = mouseX;
+		dragY = mouseY;
 	}
 	if(mouseIsDown == 2)
 	{
-		var rotation = drag - mouseX;
+		var rotation = dragX - mouseX;
 		playerRot -= rotation;
-		drag = mouseX;
+		dragX = mouseX;
+		
+		yOffset = dragY-mouseY;
+		dragY = mouseY;
 	}
 	playerX += playerXV;
 	playerY += playerYV;
@@ -383,30 +497,45 @@ function controls()
 
 function HUD()
 {
-	//ctx.fillStyle = "red";
-//	ctx.font = "20px Ariel";
-//	ctx.fillText("N",40,40);
-//	ctx.fillStyle = "white";
-//	ctx.fillText("S",40,100);
+	ctx.fillStyle = "red";
+	ctx.font = "20px Ariel";
+	ctx.fillText("N",50,17);
+	ctx.fillStyle = "white";
+	ctx.fillText("S",50,77);
 	
-//	var cX = 47 + Math.cos(Math.PI * (playerRot) / 180) * 20;
-//	var cY = 63 + Math.sin(Math.PI * (playerRot) / 180) * 20;
-//	ctx.strokeStyle = "white";
-//	ctx.beginPath();
-	//ctx.moveTo(47,63);
-	//ctx.lineTo(cX,cY);
-	//ctx.stroke();
+	var cX = 57 + Math.cos(Math.PI * (playerRot) / 180) * 20;
+	var cY = 40 + Math.sin(Math.PI * (playerRot) / 180) * 20;
+	ctx.strokeStyle = "white";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.moveTo(57,40);
+	ctx.lineTo(cX,cY);
+	ctx.stroke();
 	
-	//ctx.fillText(Math.round(playerX)+","+Math.round(playerY),600,100);
+	ctx.strokeStyle = "white";
+	ctx.lineWidth = 2;
+	ctx.beginPath();
+	ctx.moveTo(W/2-10,H/2);
+	ctx.lineTo(W/2+10,H/2);
+	ctx.stroke();
+	
+	ctx.strokeStyle = "white";
+	ctx.lineWidth = 2;
+	ctx.beginPath();
+	ctx.moveTo(W/2,H/2-10);
+	ctx.lineTo(W/2,H/2+10);
+	ctx.stroke();
+	
+	<!-- ctx.fillText(Math.round(playerX)+","+Math.round(playerY),600,100); -->
 }
 
 function render()
 {
 	ctx.clearRect(0,0,W,H);
 	controls();
-	drawWalls();
+	drawPlanes();
 	drawPlayer2D();
-	drawWalls2D();
+	drawPlanes2D();
 	HUD();
 	requestAnimationFrame(render);
 }
